@@ -80,6 +80,10 @@ export async function POST(req: NextRequest) {
       ? "manager"
       : userRoles.includes("front_desk")
       ? "front_desk"
+      : userRoles.includes("kitchen_staff")
+      ? "kitchen_staff"
+      : userRoles.includes("inventory_staff")
+      ? "inventory_staff"
       : userRoles.includes("trainer")
       ? "trainer"
       : "member";

@@ -31,7 +31,7 @@ export default function LoginPage() {
       }
 
       // Route based on role
-      if (["owner", "admin", "manager"].includes(data.user?.role)) {
+      if (["owner", "admin", "manager", "front_desk", "kitchen_staff", "inventory_staff"].includes(data.user?.role)) {
         router.push("/admin");
       } else {
         router.push("/dashboard");
@@ -127,7 +127,39 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-[#EAE3D6] text-center text-sm text-stone-600">
+        {/* Quick Demo Accounts Helper */}
+        <div className="mt-6 pt-5 border-t border-[#EAE3D6]">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 mb-2.5 text-center">
+            ⚡ Quick Demo Logins (Password: <code className="text-[#C86D51] font-mono">demo1234</code>)
+          </p>
+          <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+            {[
+              { label: "Owner", email: "owner@ampm.com" },
+              { label: "Admin", email: "admin@ampm.com" },
+              { label: "Manager", email: "manager@ampm.com" },
+              { label: "Trainer", email: "trainer@ampm.com" },
+              { label: "Front Desk", email: "frontdesk@ampm.com" },
+              { label: "Kitchen", email: "kitchen@ampm.com" },
+              { label: "Inventory", email: "inventory@ampm.com" },
+              { label: "Member (10 cr)", email: "member@ampm.com" },
+              { label: "Trial (0 cr)", email: "trial@ampm.com" },
+            ].map((acc) => (
+              <button
+                key={acc.email}
+                type="button"
+                onClick={() => {
+                  setEmail(acc.email);
+                  setPassword("demo1234");
+                }}
+                className="px-2 py-1.5 bg-[#F2EDE4] hover:bg-[#E5DDD0] text-stone-700 rounded text-center truncate transition font-medium"
+              >
+                {acc.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-5 pt-4 border-t border-[#EAE3D6] text-center text-xs text-stone-600">
           New to our shala?{" "}
           <Link
             href="/signup"
