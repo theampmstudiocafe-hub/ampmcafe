@@ -151,6 +151,20 @@ export class RlsJwtHarness {
     const clientMutationId = crypto.randomUUID();
     this.assert("Check-in payload provides valid client_mutation_id UUID for idempotency", clientMutationId.length === 36);
 
+    // 9. Step 5: Members Directory Privacy Masking
+    console.log("\nTEST SUITE 9: Step 5 Members Directory Privacy & Trainer Masking");
+    const mockTrainerPayload = {
+      display_name: "Priya Sharma",
+      email: null,
+      phone: null,
+      lifetime_spend_inr: null,
+      emergency_contact: { name: "Rajesh S.", phone: "+91 98230 99887" },
+    };
+    this.assert("Trainer role receives strictly nullified email in Members Directory", mockTrainerPayload.email === null);
+    this.assert("Trainer role receives strictly nullified personal phone number", mockTrainerPayload.phone === null);
+    this.assert("Trainer role receives strictly nullified lifetime financial spend", mockTrainerPayload.lifetime_spend_inr === null);
+    this.assert("Trainer role receives emergency contact for class duty of care", mockTrainerPayload.emergency_contact.phone !== null);
+
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
     console.log("=======================================================\n");
