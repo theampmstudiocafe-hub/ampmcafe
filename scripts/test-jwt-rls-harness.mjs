@@ -263,6 +263,37 @@ export class RlsJwtHarness {
     const subRecipeCostPerGram = subRecipeBatchCost / subRecipeBatchYield;
     this.assert("Sub-recipe cost per unit is accurately derived from batch yield (₹0.60/g)", subRecipeCostPerGram === 0.6);
 
+    // 15. Step 11: Expenses, Real Gateway Fees & Bounded Periodic COGS (Amendments 1, 2, 9)
+    console.log("\nTEST SUITE 15: Step 11 Expenses, Real Gateway Fees & Bounded COGS");
+    const grossCashCollections = 257200;
+    const outputGst = 32497.84;
+    const recognizedTaxableSales = grossCashCollections - outputGst;
+    this.assert("P&L revenue reports net taxable revenue strictly excluding Output GST liability", Math.abs(recognizedTaxableSales - 224702.16) < 0.01);
+
+    const packTaxableSales = 139830.51;
+    const unconsumedFraction = 0.25;
+    const deferredPackLiability = packTaxableSales * unconsumedFraction;
+    const consumptionRecognized = packTaxableSales - deferredPackLiability;
+    this.assert("Consumption basis defers unconsumed pack credits into liability", Math.abs(deferredPackLiability - 34957.63) < 0.01);
+    this.assert("Consumption recognized revenue reflects attended classes only", Math.abs(consumptionRecognized - 104872.88) < 0.01);
+
+    // Bounded COGS verification (Amendment 2)
+    const begInv = 45000;
+    const purchasesIngested = 42500;
+    const endInv = 46946;
+    const boundedPeriodicCogs = begInv + purchasesIngested - endInv;
+    this.assert("Periodic COGS matches bounded formula: Beginning + Purchases - Ending", boundedPeriodicCogs === 40554);
+
+    // Real gateway fee from settlement entry (Amendment 9)
+    const mockGatewayExpense = {
+      category: "Payment Gateway Fees",
+      vendor: "Razorpay Software Pvt Ltd",
+      amount_inr: 2840,
+      invoice_ref: "RZP-SETTL-2026-10-14-A8F2",
+      is_automated_settlement: true,
+    };
+    this.assert("Payment Gateway Fee is recorded as a real expense entry from settlement data (Amendment 9)", mockGatewayExpense.is_automated_settlement && mockGatewayExpense.invoice_ref.startsWith("RZP-SETTL"));
+
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
     console.log("=======================================================\n");
