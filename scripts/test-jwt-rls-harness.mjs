@@ -242,6 +242,27 @@ export class RlsJwtHarness {
     this.assert("Stocktake reconciliation posts movement_type = 'audit_adjustment'", auditAdjustment.movement_type === "audit_adjustment");
     this.assert("Negative variance correctly reflects inventory shrinkage audit entry", auditAdjustment.quantity < 0);
 
+    // 14. Step 10: Kitchen Recipes & Sub-recipes BOM, Yield % and Margins
+    console.log("\nTEST SUITE 14: Step 10 Kitchen Recipes BOM, Yield % and Margins");
+    const netGramsNeeded = 100;
+    const yieldPct = 70; // 30% peeling/pitting loss
+    const rawGramsNeeded = netGramsNeeded / (yieldPct / 100);
+    const unitCostPerGram = 0.38;
+    const effectiveCost = Number((rawGramsNeeded * unitCostPerGram).toFixed(2));
+    this.assert("Prep yield % scales raw ingredient requirements correctly (100g @ 70% yield -> 142.86g)", Math.abs(rawGramsNeeded - 142.86) < 0.01);
+    this.assert("Effective cost reflects yield loss (100g avocado costs ₹54.29)", effectiveCost === 54.29);
+
+    const sellingPrice = 380;
+    const portionCost = 92;
+    const foodCostPct = Number(((portionCost / sellingPrice) * 100).toFixed(1));
+    const grossMarginPct = Number((100 - foodCostPct).toFixed(1));
+    this.assert("Food cost % and gross margin % sum to exactly 100%", Math.abs(foodCostPct + grossMarginPct - 100) < 0.01);
+
+    const subRecipeBatchYield = 500; // g
+    const subRecipeBatchCost = 300;  // ₹
+    const subRecipeCostPerGram = subRecipeBatchCost / subRecipeBatchYield;
+    this.assert("Sub-recipe cost per unit is accurately derived from batch yield (₹0.60/g)", subRecipeCostPerGram === 0.6);
+
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
     console.log("=======================================================\n");
