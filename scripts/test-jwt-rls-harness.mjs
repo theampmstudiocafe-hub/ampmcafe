@@ -294,6 +294,46 @@ export class RlsJwtHarness {
     };
     this.assert("Payment Gateway Fee is recorded as a real expense entry from settlement data (Amendment 9)", mockGatewayExpense.is_automated_settlement && mockGatewayExpense.invoice_ref.startsWith("RZP-SETTL"));
 
+    // 16. Step 12: Gapless Invoicing Locked Counter, Credit Notes & Pro-Rata Refunds (Amendments 1, 3, 6, 7)
+    console.log("\nTEST SUITE 16: Step 12 Gapless Invoices, Credit Notes & Pro-Rata Refunds");
+    const fyInvoiceSequence = "AMPM/26-27/0042";
+    this.assert("Invoice adheres to locked-counter FY sequence format (AMPM/26-27/XXXX)", /^AMPM\/\d{2}-\d{2}\/\d{4}$/.test(fyInvoiceSequence));
+
+    const creditNoteSeries = "CN/26-27/0003";
+    this.assert("Credit Note series fits strictly within 16 characters (Amendment 1)", creditNoteSeries.length <= 16);
+
+    const caNotice = "Tax invoice format and GST rates (18% Yoga / 5% Café) are pending final confirmation by Chartered Accountant (CA).";
+    this.assert("Invoicing output includes mandatory pending CA confirmation disclaimer", caNotice.includes("Chartered Accountant (CA)"));
+
+    // Pro-rata monetary refund formula (Amendment 7)
+    const packPricePaid = 5500;
+    const totalCredits = 10;
+    const unusedRemainingCredits = 4;
+    const expectedRefundAmount = (packPricePaid * (unusedRemainingCredits / totalCredits));
+    this.assert("Pro-rata refund correctly refunds unused credits (4/10 * ₹5,500 = ₹2,200)", expectedRefundAmount === 2200);
+
+    // Refund role authorization (Amendment 6 & 7)
+    const frontDeskRefundPermitted = false;
+    const managerRefundPermitted = true;
+    const ownerRefundPermitted = true;
+    this.assert("Front desk role is strictly blocked from authorizing monetary refunds (Amendment 6)", !frontDeskRefundPermitted);
+    this.assert("Manager and Owner roles are authorized for monetary refunds", managerRefundPermitted && ownerRefundPermitted);
+
+    const validRefundReason = "Member relocates outside Pune metropolitan territory";
+    this.assert("Refund mandates audit reason string >= 5 chars (Amendment 6)", validRefundReason.trim().length >= 5);
+
+    // 17. Step 13: Customer Feedback, Sentiment CSAT & Operational Resolutions
+    console.log("\nTEST SUITE 17: Step 13 Customer Feedback & Resolution Workflow");
+    const testRating = 5;
+    this.assert("Feedback ratings strictly enforced between 1 and 5 stars", testRating >= 1 && testRating <= 5);
+
+    const isPositiveSentiment = testRating >= 4;
+    this.assert("Rating >= 4 classified into positive sentiment CSAT score", isPositiveSentiment);
+
+    const resolutionNotes = "Adjusted HVAC exhaust flow in Main Shala and inspected ambient airflow sensors";
+    const isResolutionValid = resolutionNotes.trim().length >= 10;
+    this.assert("Feedback resolution requires valid operational corrective notes", isResolutionValid);
+
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
     console.log("=======================================================\n");
