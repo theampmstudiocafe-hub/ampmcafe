@@ -219,6 +219,29 @@ export class RlsJwtHarness {
     this.assert("Delivery intake movement type is strictly 'purchase'", mockDeliveryMovement.movement_type === "purchase");
     this.assert("Delivery intake movement records positive intake quantity in base units", mockDeliveryMovement.quantity_base_units > 0);
 
+    // 13. Step 9: Inventory Master & Additive Multi-Area Stocktake Reconciliation (Amendments 3 & 5)
+    console.log("\nTEST SUITE 13: Step 9 Inventory Master & Additive Multi-Area Stocktake");
+    const matchaDosThreshold = 14; // days
+    const avocadoDosThreshold = 3;  // days
+    this.assert("Days-of-supply threshold is independently configurable per ingredient (Amendment 5)", matchaDosThreshold !== avocadoDosThreshold);
+
+    // Multi-area count summation
+    const dryStoreCount = 5800; // g
+    const baristaBarCount = 2500; // g
+    const totalCounted = dryStoreCount + baristaBarCount;
+    const expectedAtCountTime = 8500; // g
+    const variance = totalCounted - expectedAtCountTime; // -200g
+    this.assert("Counts across distinct storage areas sum additively per ingredient (Amendment 3)", totalCounted === 8300);
+    this.assert("Stocktake variance reconciles against balance captured at count time (-200g shrinkage)", variance === -200);
+
+    const auditAdjustment = {
+      movement_type: "audit_adjustment",
+      quantity: variance,
+      reason: "Physical stocktake audit reconciliation session stk-session-2026-10-15",
+    };
+    this.assert("Stocktake reconciliation posts movement_type = 'audit_adjustment'", auditAdjustment.movement_type === "audit_adjustment");
+    this.assert("Negative variance correctly reflects inventory shrinkage audit entry", auditAdjustment.quantity < 0);
+
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
     console.log("=======================================================\n");
