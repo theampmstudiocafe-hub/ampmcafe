@@ -213,10 +213,11 @@ export default function AdminInventoryPage() {
         {/* Overview Metric Badges */}
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-xl bg-white border border-stone-200 text-xs shadow-sm">
-            <span className="text-[10px] text-stone-400 block uppercase font-mono">Valuation</span>
+            <span className="text-[10px] text-stone-400 block uppercase font-mono">Valuation (WAC)</span>
             <span className="font-semibold text-stone-900">
               ₹{totalValue.toLocaleString("en-IN")}
             </span>
+            <span className="text-[9px] text-stone-400 block font-mono">Weighted Avg Cost</span>
           </div>
           <div className="p-3 rounded-xl bg-white border border-stone-200 text-xs shadow-sm">
             <span className="text-[10px] text-stone-400 block uppercase font-mono">Breached SKUs</span>

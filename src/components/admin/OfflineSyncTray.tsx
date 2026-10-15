@@ -11,6 +11,7 @@ import {
   WifiOff,
   RefreshCw,
   AlertTriangle,
+  AlertCircle,
   CheckCircle,
   X,
   Layers,
@@ -217,18 +218,43 @@ export function OfflineSyncTray() {
                       </div>
                     )}
 
-                    {/* Error message */}
+                    {/* Error / Exception message */}
                     {m.status === "failed" && (
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] text-rose-700 font-mono">
-                          {m.error_message || "Sync Failed"} (Retry #{m.retry_count})
-                        </span>
-                        <button
-                          onClick={() => handleDelete(m.id)}
-                          className="text-stone-400 hover:text-rose-600"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                      <div className="pt-2 border-t border-rose-100 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-rose-700 font-semibold flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                            {m.error_message?.includes("SESSION_CANCELLED")
+                              ? "Session Cancelled on Server While Offline"
+                              : `${m.error_message || "Sync Failed"} (Retry #${m.retry_count})`}
+                          </span>
+                          <button
+                            onClick={() => handleDelete(m.id)}
+                            className="text-stone-400 hover:text-rose-600"
+                            title="Dismiss sync exception"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {m.error_message?.includes("SESSION_CANCELLED") && (
+                          <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-900 space-y-1">
+                            <p>Member pack credits were preserved (0 deducted). Front Desk options:</p>
+                            <div className="flex gap-2 pt-0.5">
+                              <button
+                                onClick={() => handleDelete(m.id)}
+                                className="px-2 py-0.5 bg-stone-900 text-white rounded text-[9px] font-medium hover:bg-stone-800"
+                              >
+                                Acknowledge & Notify
+                              </button>
+                              <a
+                                href="/admin/bookings"
+                                className="px-2 py-0.5 bg-amber-800 text-white rounded text-[9px] font-medium hover:bg-amber-900 inline-block"
+                              >
+                                Reassign Walk-in
+                              </a>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

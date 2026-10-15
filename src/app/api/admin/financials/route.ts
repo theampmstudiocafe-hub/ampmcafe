@@ -72,13 +72,14 @@ export async function GET(request: Request) {
     const cogsData = periodBounded
       ? {
           mode: "periodic_bounded" as const,
-          label: "Periodic Bounded COGS (Stocktake Verified)",
+          label: "Periodic Bounded COGS (Stocktake Verified via WAC)",
           beginning_inventory_inr: beginningInventory,
           purchases_inr: purchases,
           ending_inventory_inr: endingInventory,
           total_cogs_inr: boundedPeriodicCogs,
+          valuation_method: "Weighted Average Cost (WAC)",
           is_estimate: false,
-          disclaimer: "Computed across closed stocktake boundary (Beginning + Purchases - Ending Inventory). Recipe-derived depletion not used until Phase 3 POS orders.",
+          disclaimer: "Computed across closed stocktake boundary (Beginning + Purchases - Ending Inventory) using moving Weighted Average Cost (WAC). Recipe-derived depletion not used until Phase 3 POS orders.",
         }
       : {
           mode: "purchase_movement_estimate" as const,
@@ -87,8 +88,9 @@ export async function GET(request: Request) {
           purchases_inr: purchases,
           ending_inventory_inr: 0,
           total_cogs_inr: purchases, // conservative purchase movement estimate
+          valuation_method: "Weighted Average Cost (WAC)",
           is_estimate: true,
-          disclaimer: "Unclosed interim period. Recipe-derived COGS not available until Phase 3 POS orders. Showing purchase-based movement estimate.",
+          disclaimer: "Unclosed interim period. Recipe-derived COGS not available until Phase 3 POS orders. Showing purchase-based movement estimate valued at purchase invoice cost.",
         };
 
     // 3. Operating Expenses (including real Razorpay gateway fee from settlement data - Amendment 9)

@@ -104,7 +104,9 @@ export async function GET() {
         counted_total: counted,
         variance,
         variance_pct: Number(variancePct.toFixed(1)),
+        wac_unit_cost_inr: meta.cost,
         cost_impact_inr: Number(costImpact.toFixed(2)),
+        valuation_method: "Weighted Average Cost (WAC)",
       };
     });
 
@@ -112,6 +114,8 @@ export async function GET() {
       success: true,
       session: {
         ...activeStocktakeSession,
+        valuation_method: "Weighted Average Cost (WAC)",
+        valuation_rule: "Variance cost impact is strictly calculated as Variance (base units) * Weighted Average Cost (WAC).",
         variance_summary: varianceSummary,
       },
     });

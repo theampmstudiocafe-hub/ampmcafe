@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  AlertTriangle,
   X,
   ArrowLeft,
   Sparkles,
@@ -387,7 +388,7 @@ export default function AdminPacksPage() {
               Manual Member Credit Ledger Adjustment
             </h2>
             <p className="text-xs text-stone-500 mt-1">
-              Directly adjust a member's pack credits. Front desk adjustments are strictly capped at maximum ±2 credits. All adjustments commit an atomic record to the immutable credit ledger and audit log.
+              Directly adjust a member's pack credits. Front desk adjustments are strictly capped at maximum ±2 cumulative credits per member per calendar day (Fix 2). Repeat adjustments are automatically flagged in the Owner Audit Report. All adjustments commit an atomic record to the immutable credit ledger and audit log.
             </p>
           </div>
 
@@ -553,7 +554,18 @@ export default function AdminPacksPage() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 font-medium text-stone-800">
-                      {log.member_name}
+                      <div className="flex items-center gap-1.5">
+                        <span>{log.member_name}</span>
+                        {log.is_repeat && (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-900 border border-amber-300"
+                            title={log.repeat_warning}
+                          >
+                            <AlertTriangle className="w-3 h-3 text-amber-700" />
+                            Repeat ({log.repeat_count}x)
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3.5 px-4">
                       <span

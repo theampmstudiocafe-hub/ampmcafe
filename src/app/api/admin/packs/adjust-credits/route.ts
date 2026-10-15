@@ -24,13 +24,32 @@ export async function POST(request: Request) {
 
     const deltaNum = Number(credit_delta);
 
-    // Enforce Amendment 6: Front Desk Capped at max +/- 2 credits
+    // Track daily cumulative adjustments for front_desk per member (Fix 2)
+    // Key: `${member_id}_${date}` -> total absolute credits adjusted today
+    const today = new Date().toISOString().split("T")[0];
+    const todayKey = `${member_id}_${today}`;
+
+    // Seeded history / state tracker
+    if (!(globalThis as any).__ampm_frontdesk_daily_adj) {
+      (globalThis as any).__ampm_frontdesk_daily_adj = new Map<string, number>();
+      // Seed Priya Sharma with 1 credit adjustment already made today to allow testing repeat behavior
+      (globalThis as any).__ampm_frontdesk_daily_adj.set(`mem-01_${today}`, 1);
+    }
+    const dailyTracker: Map<string, number> = (globalThis as any).__ampm_frontdesk_daily_adj;
+
+    // Enforce Fix 2: Front Desk Cumulative Daily Cap per Member
     if (staff_role === "front_desk") {
-      if (Math.abs(deltaNum) > 2) {
+      const currentToday = dailyTracker.get(todayKey) || 0;
+      const proposedTotal = currentToday + Math.abs(deltaNum);
+
+      if (proposedTotal > 2) {
         return NextResponse.json(
           {
             success: false,
-            error: `Front desk staff adjustments are strictly capped at maximum ±2 credits (attempted: ${deltaNum > 0 ? "+" : ""}${deltaNum}). Adjustments exceeding 2 credits require Manager or Owner authorization.`,
+            error: `Front desk daily cumulative adjustment cap exceeded: Front desk is strictly capped at a maximum of ±2 credits per member per calendar day (Fix 2). Member has already received ${currentToday} credit adjustment(s) today (attempted: ${deltaNum > 0 ? "+" : ""}${deltaNum}, proposed daily total: ${proposedTotal}). Cumulative adjustments exceeding 2 credits/day require Manager or Owner authorization.`,
+            current_today_credits: currentToday,
+            attempted_credits: deltaNum,
+            daily_cap: 2,
           },
           { status: 403 }
         );
@@ -77,6 +96,12 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     };
 
+    // Commit cumulative daily count if front_desk
+    if (staff_role === "front_desk") {
+      const currentToday = dailyTracker.get(todayKey) || 0;
+      dailyTracker.set(todayKey, currentToday + Math.abs(deltaNum));
+    }
+
     console.log("[CREDIT LEDGER ENTRY]", ledgerEntry);
     console.log("[AUDIT LOG]", auditEntry);
 
@@ -86,6 +111,8 @@ export async function POST(request: Request) {
       credit_delta: deltaNum,
       balance_before: balanceBefore,
       balance_after: balanceAfter,
+      cumulative_daily_total: staff_role === "front_desk" ? dailyTracker.get(todayKey) : undefined,
+      daily_cap: staff_role === "front_desk" ? 2 : "unlimited",
       reason: reason.trim(),
       ledger_entry: ledgerEntry,
       audit_entry: auditEntry,

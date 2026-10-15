@@ -250,6 +250,8 @@ export async function GET() {
         total_sub_recipes: subRecipesStore.length,
         average_food_cost_pct: Number(avgFoodCost.toFixed(1)),
         average_margin_pct: Number((100 - avgFoodCost).toFixed(1)),
+        valuation_method: "Weighted Average Cost (WAC)",
+        valuation_rule: "All recipe portion costs are derived using ingredient Weighted Average Cost (WAC) adjusted for preparation yield percentage.",
       },
     });
   } catch (err: any) {

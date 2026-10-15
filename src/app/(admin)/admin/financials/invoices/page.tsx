@@ -590,18 +590,37 @@ export default function AdminInvoicesPage() {
                   </div>
                 </div>
 
-                {/* Pro-Rata Live Calculation Display */}
-                <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 space-y-1">
+                {/* Pro-Rata Live Calculation Display (Fix 1) */}
+                <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 space-y-2">
                   <div className="flex justify-between items-center text-amber-950 font-medium">
-                    <span>Pro-Rata Refund Amount (Unused Credits):</span>
+                    <span>Pro-Rata Refund Amount (Total Paid):</span>
                     <span className="text-base font-serif font-semibold">₹{calculatedRefund}</span>
                   </div>
-                  <div className="text-[10px] text-amber-800">
-                    Formula: ₹{refundPricePaid} × ({refundRemainingCredits} / {refundTotalCredits} credits)
+                  <div className="grid grid-cols-2 gap-2 p-2 bg-white/80 rounded-lg border border-amber-200/60 font-mono text-[11px]">
+                    <div>
+                      <span className="text-stone-400 block text-[10px]">Taxable Reversal:</span>
+                      <span className="font-semibold text-stone-800">
+                        ₹{(Number(calculatedRefund) / 1.18).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-400 block text-[10px]">GST (18%) Reversal:</span>
+                      <span className="font-semibold text-amber-900">
+                        ₹{(Number(calculatedRefund) - Number(calculatedRefund) / 1.18).toFixed(2)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-[10px] text-amber-700 pt-1 border-t border-amber-200/50">
-                    • Remaining {refundRemainingCredits} credits will be voided in member ledger.
-                    <br />• Any future booked slots using this pack are automatically cancelled.
+                  <div className="text-[10px] text-amber-800 space-y-1 pt-1 border-t border-amber-200/50">
+                    <div>
+                      <strong>Discount / Promo Policy:</strong> Pro-rata refund applies to the actual net cash collected post-discount, not the full nominal pack price.
+                    </div>
+                    <div>
+                      <strong>Gateway Fees Policy:</strong> Payment gateway acquisition fees (~2% + GST) are retained by the processor and are non-recoverable.
+                    </div>
+                    <div className="text-stone-500">
+                      • Remaining {refundRemainingCredits} credits will be voided in member ledger.
+                      <br />• Any future booked slots using this pack are automatically cancelled.
+                    </div>
                   </div>
                 </div>
 

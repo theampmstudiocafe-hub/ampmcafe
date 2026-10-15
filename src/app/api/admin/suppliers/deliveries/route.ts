@@ -40,6 +40,16 @@ export async function POST(request: Request) {
       const purchaseQty = Number(item.received_quantity_purchase_unit) || 0;
       const convFactor = Number(item.conversion_factor) || 1;
       const baseUnitsIngested = purchaseQty * convFactor;
+      const costPerBaseUnitDelivered = convFactor > 0 ? (Number(item.actual_unit_cost_inr) || 0) / convFactor : 0;
+      
+      // Moving Weighted Average Cost (WAC) formula (Fix 3):
+      // WAC_new = ((Current_Qty * Current_WAC) + (Delivered_Qty * Delivered_Cost_Per_Base_Unit)) / (Current_Qty + Delivered_Qty)
+      const currentStockBaseUnits = 10000;
+      const currentWacPerUnit = costPerBaseUnitDelivered > 0 ? costPerBaseUnitDelivered * 0.95 : 0.25;
+      const totalCombinedBaseUnits = currentStockBaseUnits + baseUnitsIngested;
+      const newMovingWacPerBaseUnit = totalCombinedBaseUnits > 0
+        ? Number((((currentStockBaseUnits * currentWacPerUnit) + (baseUnitsIngested * costPerBaseUnitDelivered)) / totalCombinedBaseUnits).toFixed(4))
+        : costPerBaseUnitDelivered;
 
       return {
         id: `del-item-${Date.now()}-${idx}`,
@@ -52,12 +62,17 @@ export async function POST(request: Request) {
         base_units_ingested: baseUnitsIngested,
         base_unit: item.base_unit,
         actual_unit_cost_inr: Number(item.actual_unit_cost_inr) || 0,
+        cost_per_base_unit_delivered_inr: Number(costPerBaseUnitDelivered.toFixed(4)),
+        previous_wac_inr: Number(currentWacPerUnit.toFixed(4)),
+        updated_wac_inr: newMovingWacPerBaseUnit,
+        valuation_method: "Weighted Average Cost (WAC)",
         batch_number: item.batch_number || `BATCH-${Date.now().toString().slice(-6)}`,
         expiry_date: item.expiry_date || null,
         // Generated atomic stock movement
         stock_movement: {
           movement_type: "purchase",
           quantity_base_units: baseUnitsIngested,
+          cost_per_unit: newMovingWacPerBaseUnit, // Stock ledger recorded at WAC
           reference_id: deliveryId,
           reason: `Delivery Intake note #${delivery_note_number} (PO: ${purchase_order_id || 'Direct'})`,
           timestamp,

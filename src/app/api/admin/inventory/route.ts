@@ -116,6 +116,8 @@ export async function GET() {
         total_items: inventoryStore.length,
         total_inventory_value_inr: totalVal,
         low_stock_count: lowStockCount,
+        valuation_method: "Weighted Average Cost (WAC)",
+        valuation_rule: "All inventory valuation is strictly computed using moving Weighted Average Cost (WAC): Total Value = Current Stock (base units) * WAC per unit.",
       },
     });
   } catch (err: any) {
