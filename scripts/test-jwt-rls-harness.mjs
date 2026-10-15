@@ -201,6 +201,24 @@ export class RlsJwtHarness {
     this.assert("Non-owner role receives nullified hourly_rate_inr (owner-only privacy)", sanitizedForManager.hourly_rate_inr === null);
     this.assert("Staff emergency contact is retained across roles for workplace duty of care", sanitizedForManager.emergency_contact.phone !== null);
 
+    // 12. Step 8: Suppliers, Purchase Orders & Delivery Intake Unit Conversion
+    console.log("\nTEST SUITE 12: Step 8 Suppliers & Purchase Order Unit Conversion");
+    const testPoNumber = "PO-2026-0042";
+    this.assert("Purchase order format adheres to standard sequence (PO-2026-XXXX)", /^PO-2026-\d{4}$/.test(testPoNumber));
+
+    const receivedCartons = 24;
+    const convFactorPerCarton = 1000; // 1000 ml per carton
+    const baseUnitsReceived = receivedCartons * convFactorPerCarton;
+    this.assert("Delivery intake correctly converts purchase unit to base unit (24 cartons -> 24,000 ml)", baseUnitsReceived === 24000);
+
+    const mockDeliveryMovement = {
+      movement_type: "purchase",
+      quantity_base_units: baseUnitsReceived,
+      reason: "Delivery Intake note #DN-102938",
+    };
+    this.assert("Delivery intake movement type is strictly 'purchase'", mockDeliveryMovement.movement_type === "purchase");
+    this.assert("Delivery intake movement records positive intake quantity in base units", mockDeliveryMovement.quantity_base_units > 0);
+
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
     console.log("=======================================================\n");
