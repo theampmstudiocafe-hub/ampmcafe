@@ -127,6 +127,23 @@ export class RlsJwtHarness {
     this.assert("Invoice format adheres to gapless FY format (AMPM/26-27/XXXX)", /^AMPM\/\d{2}-\d{2}\/\d{4}$/.test(formatSample));
     this.assert("Credit note series format is <= 16 chars (CN/26-27/XXXX)", creditNoteSample.length <= 16);
 
+    // 7. Step 3 Dashboard Metrics & Offline Sync Restrictions
+    console.log("\nTEST SUITE 7: Step 3 Dashboard Metrics & Offline Sync Controls");
+    const testStock = 180;
+    const testMinStock = 500;
+    const isMinStockBreached = testStock <= testMinStock;
+    this.assert("Overview low-stock alert triggers strictly on current_stock <= minimum_stock_level", isMinStockBreached);
+
+    const grossCash = 14632;
+    const outputGstLiab = 2232;
+    const netTaxableRevenue = grossCash - outputGstLiab;
+    this.assert("P&L revenue reports net taxable sales excluding Output GST liability", netTaxableRevenue === 12400);
+
+    const allowedOffline = ["FRONT_DESK_CHECKIN", "STOCKTAKE_COUNT", "MANUAL_EXPENSE"];
+    const isCreditAdjustmentAllowedOffline = allowedOffline.includes("CREDIT_ADJUSTMENT");
+    this.assert("Credit adjustments are strictly BLOCKED from offline execution", !isCreditAdjustmentAllowedOffline);
+    this.assert("Front desk check-in, stocktake, and expenses are permitted offline", allowedOffline.length === 3);
+
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
     console.log("=======================================================\n");

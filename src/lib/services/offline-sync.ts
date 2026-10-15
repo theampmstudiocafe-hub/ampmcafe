@@ -141,7 +141,7 @@ class OfflineSyncManager {
         const wasOffline = this.connectionState === "offline";
         this.connectionState = newState;
 
-        if (wasOffline && newState !== "offline") {
+        if (wasOffline) {
           console.log("[OfflineSync] Regained connection. Replaying queue...");
           this.replayOfflineQueue();
         }
