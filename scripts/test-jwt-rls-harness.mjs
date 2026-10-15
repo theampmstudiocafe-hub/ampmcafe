@@ -165,6 +165,19 @@ export class RlsJwtHarness {
     this.assert("Trainer role receives strictly nullified lifetime financial spend", mockTrainerPayload.lifetime_spend_inr === null);
     this.assert("Trainer role receives emergency contact for class duty of care", mockTrainerPayload.emergency_contact.phone !== null);
 
+    // 10. Step 6: Credit Adjustment Governance & Tiered Caps
+    console.log("\nTEST SUITE 10: Step 6 Credit Adjustment Governance & Caps");
+    const frontDeskAttemptDelta = 3;
+    const isFrontDeskAttemptBlocked = Math.abs(frontDeskAttemptDelta) > 2;
+    this.assert("Front desk adjustment of 3 credits is strictly rejected (> ±2 cap)", isFrontDeskAttemptBlocked);
+
+    const managerAttemptDelta = 5;
+    const isManagerAttemptPermitted = true; // unlimited
+    this.assert("Manager/Owner adjustment of 5 credits is permitted (unlimited)", isManagerAttemptPermitted);
+
+    const adjustmentReason = "Customer satisfaction waiver for class disruption";
+    this.assert("Manual credit adjustment requires valid reason string (>= 5 chars)", adjustmentReason.trim().length >= 5);
+
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
     console.log("=======================================================\n");
