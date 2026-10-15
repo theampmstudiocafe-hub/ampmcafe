@@ -11,10 +11,19 @@ import {
   ArrowLeft,
   Sparkles,
   ExternalLink,
-  ShieldCheck,
   Calendar,
   UtensilsCrossed,
+  IndianRupee,
+  Receipt,
+  Users,
+  UserCog,
+  Truck,
+  Boxes,
+  ChefHat,
+  MessageSquareHeart,
+  TrendingUp,
 } from "lucide-react";
+import { OfflineSyncTray } from "@/components/admin/OfflineSyncTray";
 
 export default function AdminLayout({
   children,
@@ -23,40 +32,49 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
 
-  const navItems = [
+  const navSections = [
     {
-      title: "Dashboard Overview",
-      href: "/admin",
-      icon: LayoutDashboard,
-      badge: null,
+      title: "Overview & Finance",
+      items: [
+        { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
+        { title: "Financials & P&L", href: "/admin/financials", icon: IndianRupee },
+        { title: "Operating Expenses", href: "/admin/expenses", icon: Receipt },
+      ],
     },
     {
-      title: "Class Packs & Pricing",
-      href: "/admin/packs",
-      icon: Layers,
-      badge: "Core",
+      title: "Yoga Studio",
+      items: [
+        { title: "Bookings & Roster", href: "/admin/bookings", icon: Calendar },
+        { title: "Members Directory", href: "/admin/members", icon: Users },
+        { title: "Class Packs & Pricing", href: "/admin/packs", icon: Layers },
+        { title: "Staff & Trainers HR", href: "/admin/staff", icon: UserCog },
+      ],
     },
     {
-      title: "Community Moderation",
-      href: "/admin/moderation",
-      icon: ShieldAlert,
-      badge: null,
+      title: "Café Operations",
+      items: [
+        { title: "Suppliers & POs", href: "/admin/suppliers", icon: Truck },
+        { title: "Stock & Stocktake", href: "/admin/inventory", icon: Boxes },
+        { title: "Kitchen Recipes (BOM)", href: "/admin/recipes", icon: ChefHat },
+      ],
     },
     {
-      title: "Trial Abuse Safeguards",
-      href: "/admin/trials",
-      icon: UserCheck,
-      badge: null,
+      title: "Integrity & Feedback",
+      items: [
+        { title: "Trial Safeguards", href: "/admin/trials", icon: UserCheck },
+        { title: "Moderation Queue", href: "/admin/moderation", icon: ShieldAlert },
+        { title: "Customer Feedback", href: "/admin/feedback", icon: MessageSquareHeart },
+      ],
     },
   ];
 
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col md:flex-row text-stone-900">
       {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-stone-900 text-stone-100 flex flex-col justify-between shrink-0">
+      <aside className="w-full md:w-64 bg-stone-900 text-stone-100 flex flex-col justify-between shrink-0 h-screen sticky top-0 overflow-y-auto">
         <div>
           {/* Brand */}
-          <div className="p-6 border-b border-stone-800">
+          <div className="p-5 border-b border-stone-800">
             <div className="flex items-center gap-2.5">
               <div className="px-2 py-1 rounded-lg bg-amber-500 text-stone-950 font-mono font-bold text-xs shadow">
                 AM:PM
@@ -66,63 +84,44 @@ export default function AdminLayout({
                   THE AM:PM STUDIO
                 </h1>
                 <p className="text-[10px] text-stone-400 font-light">
-                  Property Management • Phase 1
+                  Property Management System
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="p-4 space-y-1.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
+          {/* Navigation Sections */}
+          <div className="p-3 space-y-4">
+            {navSections.map((section) => (
+              <div key={section.title} className="space-y-1">
+                <span className="px-3 text-[10px] uppercase font-bold tracking-wider text-stone-400">
+                  {section.title}
+                </span>
+                <nav className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition ${
-                    isActive
-                      ? "bg-amber-500 text-stone-950 font-semibold shadow-sm"
-                      : "text-stone-300 hover:bg-stone-800 hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{item.title}</span>
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider ${
-                        isActive
-                          ? "bg-stone-950 text-amber-300"
-                          : "bg-stone-800 text-stone-300"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Future Phase 2 / Phase 3 Placeholders in PMS */}
-          <div className="px-6 py-4">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-stone-400 block mb-2">
-              Future PMS Expansions
-            </span>
-            <div className="space-y-1.5 text-xs text-stone-400 font-light">
-              <div className="flex items-center gap-2 py-1 opacity-70">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>Trainer Rosters (Phase 2)</span>
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
+                          isActive
+                            ? "bg-amber-500 text-stone-950 font-semibold shadow-sm"
+                            : "text-stone-300 hover:bg-stone-800 hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <span>{item.title}</span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </nav>
               </div>
-              <div className="flex items-center gap-2 py-1 opacity-70">
-                <UtensilsCrossed className="w-3.5 h-3.5" />
-                <span>Café KOT & Inventory (Phase 3)</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -149,6 +148,9 @@ export default function AdminLayout({
       <main className="flex-1 p-6 md:p-10 overflow-y-auto">
         <div className="max-w-6xl mx-auto">{children}</div>
       </main>
+
+      {/* Persistent Offline Sync Tray */}
+      <OfflineSyncTray />
     </div>
   );
 }
