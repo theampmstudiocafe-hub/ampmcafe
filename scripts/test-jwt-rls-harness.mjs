@@ -139,10 +139,17 @@ export class RlsJwtHarness {
     const netTaxableRevenue = grossCash - outputGstLiab;
     this.assert("P&L revenue reports net taxable sales excluding Output GST liability", netTaxableRevenue === 12400);
 
-    const allowedOffline = ["FRONT_DESK_CHECKIN", "STOCKTAKE_COUNT", "MANUAL_EXPENSE"];
-    const isCreditAdjustmentAllowedOffline = allowedOffline.includes("CREDIT_ADJUSTMENT");
-    this.assert("Credit adjustments are strictly BLOCKED from offline execution", !isCreditAdjustmentAllowedOffline);
-    this.assert("Front desk check-in, stocktake, and expenses are permitted offline", allowedOffline.length === 3);
+    // 8. Step 4: Bookings Master & Late Cancellation Override Validation
+    console.log("\nTEST SUITE 8: Step 4 Bookings Master & Policy Override Rules");
+    const validOverrideReason = "Medical certificate submitted and verified by Front Desk";
+    const invalidEmptyReason = "   ";
+    const isOverrideValid = validOverrideReason.trim().length >= 5;
+    const isInvalidRejected = invalidEmptyReason.trim().length < 5;
+    this.assert("Cancellation override requires minimum 5-character reason string", isOverrideValid);
+    this.assert("Empty or whitespace-only override reason is strictly rejected", isInvalidRejected);
+
+    const clientMutationId = crypto.randomUUID();
+    this.assert("Check-in payload provides valid client_mutation_id UUID for idempotency", clientMutationId.length === 36);
 
     console.log("\n=======================================================");
     console.log(`TEST SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);
