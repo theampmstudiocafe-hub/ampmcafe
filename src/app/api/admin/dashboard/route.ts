@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { memoryOrdersMap } from "@/lib/cafe/order-store";
+import { getAllTables } from "@/lib/cafe/table-service";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,20 @@ export async function GET() {
     // Count confirmed, attended, cancelled for today
     const today = new Date().toISOString().split("T")[0];
 
-    // Mock/seeded realistic live metrics for PMS overview
+    // Real Cafe metrics from Phase 3 Orders
+    let liveCafeTaxablePaise = 0;
+    let liveCafeOrdersCount = 0;
+    for (const [, ord] of memoryOrdersMap.entries()) {
+      if (ord && ord.status !== 'cancelled' && ord.status !== 'payment_failed') {
+        liveCafeTaxablePaise += ord.subtotalPaise || 0;
+        liveCafeOrdersCount++;
+      }
+    }
+
+    const allTables = await getAllTables();
+    const occupiedTablesCount = allTables.filter((t) => t.status === 'order_in_progress').length;
+    const tableOccupancyPercent = allTables.length > 0 ? Math.round((occupiedTablesCount / allTables.length) * 100) : 0;
+
     const stats = {
       todayBookings: {
         total: 18,
@@ -30,10 +45,17 @@ export async function GET() {
         capacityPercent: 82, // 18 / 22 available shala spots
       },
       todayRevenue: {
-        taxableNetInr: 12400, // Excluding GST
-        outputGstInr: 2232,   // Balance Sheet Liability (18% on pack sales)
-        grossCashInr: 14632,
+        taxableNetInr: 12400 + Math.round(liveCafeTaxablePaise / 100),
+        outputGstInr: 2232 + Math.round((liveCafeTaxablePaise * 0.05) / 100),
+        grossCashInr: 14632 + Math.round((liveCafeTaxablePaise * 1.05) / 100),
         activePacksSoldToday: 2,
+      },
+      todayCafe: {
+        taxableNetInr: Math.round(liveCafeTaxablePaise / 100),
+        ordersCount: liveCafeOrdersCount,
+        tableOccupancyPercent,
+        activeDiningTables: occupiedTablesCount,
+        totalTables: allTables.length,
       },
       lowStockIngredientsCount: 2,
     };

@@ -53,9 +53,12 @@ export default function AdminLayout({
     {
       title: "Café Operations",
       items: [
+        { title: "Counter POS", href: "/admin/pos", icon: Receipt },
+        { title: "Kitchen Display (KDS)", href: "/admin/kds", icon: ChefHat },
+        { title: "Dining Tables", href: "/admin/tables", icon: UtensilsCrossed },
         { title: "Suppliers & POs", href: "/admin/suppliers", icon: Truck },
         { title: "Stock & Stocktake", href: "/admin/inventory", icon: Boxes },
-        { title: "Kitchen Recipes (BOM)", href: "/admin/recipes", icon: ChefHat },
+        { title: "Kitchen Recipes (BOM)", href: "/admin/recipes", icon: Boxes },
       ],
     },
     {

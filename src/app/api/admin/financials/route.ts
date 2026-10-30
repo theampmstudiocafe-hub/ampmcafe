@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { memoryOrdersMap } from "@/lib/cafe/order-store";
+import { activeMovementsStore } from "@/lib/services/recipe-depletion-service";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +55,25 @@ export async function GET(request: Request) {
     // Packs: ₹1,65,000 (inc 18% GST) -> Taxable: ₹1,39,830.51, GST: ₹25,169.49
     // Drop-ins: ₹28,000 (inc 18% GST) -> Taxable: ₹23,728.81, GST: ₹4,271.19
     // Cafe: ₹64,200 (inc 5% GST) -> Taxable: ₹61,142.86, GST: ₹3,057.14
-    const grossCollections = 257200;
-    const outputGstLiability = 32497.84; // 25169.49 + 4271.19 + 3057.14
-    const totalTaxableCashBasis = grossCollections - outputGstLiability; // ₹224,702.16
+    // Live Cafe Sales from Phase 3 Orders
+    let liveCafeTaxableInr = 0;
+    for (const [, ord] of memoryOrdersMap.entries()) {
+      if (ord && ord.status !== 'cancelled' && ord.status !== 'payment_failed') {
+        liveCafeTaxableInr += (ord.subtotalPaise || 0) / 100;
+      }
+    }
+
+    // Live Recipe Depletion Cost from WAC Movements
+    let liveRecipeDepletionCogsInr = 0;
+    for (const mov of activeMovementsStore) {
+      if (mov.movementType === 'dish_sale_depletion') {
+        liveRecipeDepletionCogsInr += Math.abs(mov.quantity) * mov.costPerUnitInr;
+      }
+    }
+
+    const grossCollections = 257200 + liveCafeTaxableInr * 1.05;
+    const outputGstLiability = 32497.84 + liveCafeTaxableInr * 0.05;
+    const totalTaxableCashBasis = grossCollections - outputGstLiability;
 
     // In consumption mode, unconsumed credits are held as deferred revenue liability:
     // e.g. 25% of pack credits purchased are still unconsumed in user accounts
@@ -124,7 +142,7 @@ export async function GET(request: Request) {
         taxable_revenue_inr: Number(recognizedTaxableRevenue.toFixed(2)),
         yoga_packs_recognized_inr: Number((139830.51 - deferredRevenue).toFixed(2)),
         drop_ins_recognized_inr: 23728.81,
-        cafe_sales_recognized_inr: 61142.86,
+        cafe_sales_recognized_inr: Number((61142.86 + liveCafeTaxableInr).toFixed(2)),
         deferred_revenue_liability_inr: Number(deferredRevenue.toFixed(2)),
       },
       cogs: cogsData,
