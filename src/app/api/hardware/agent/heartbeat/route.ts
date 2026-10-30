@@ -16,7 +16,7 @@ export interface AgentHeartbeatState {
   lastPingAt: string;
 }
 
-export let latestAgentHeartbeat: AgentHeartbeatState | null = {
+let latestAgentHeartbeat: AgentHeartbeatState | null = {
   deviceId: "agent_pos1_pune",
   status: "online",
   paperStatus: "ok",

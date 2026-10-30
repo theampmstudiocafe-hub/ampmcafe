@@ -3,4 +3,7 @@
  * Retained for offline fallback and automated vertical slice integration testing.
  */
 
-export const memoryOrdersMap: Map<string, any> = new Map();
+const globalOrders: Map<string, any> = (globalThis as any).__am_pm_orders_map || new Map();
+(globalThis as any).__am_pm_orders_map = globalOrders;
+
+export const memoryOrdersMap: Map<string, any> = globalOrders;
