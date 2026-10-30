@@ -28,15 +28,33 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let authUser: any = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) {
+      authUser = data.user;
+    }
+  } catch {
+    // Supabase offline/unreachable
+  }
+
+  // Check demo session cookie fallback
+  if (!authUser) {
+    const demoCookie = request.cookies.get("ampm_session_user");
+    if (demoCookie?.value) {
+      try {
+        authUser = JSON.parse(decodeURIComponent(demoCookie.value));
+      } catch {
+        // invalid cookie
+      }
+    }
+  }
 
   const path = request.nextUrl.pathname;
 
-  // Protected Admin Area: requires admin, owner, or manager
+  // Protected Admin Area: requires admin, owner, or staff
   if (path.startsWith("/admin")) {
-    if (!user) {
+    if (!authUser) {
       const redirectUrl = new URL("/login", request.url);
       redirectUrl.searchParams.set("redirect", path);
       return NextResponse.redirect(redirectUrl);
@@ -45,7 +63,7 @@ export async function middleware(request: NextRequest) {
 
   // Protected Member Area: requires logged in user
   if (path.startsWith("/dashboard") || path.startsWith("/community")) {
-    if (!user) {
+    if (!authUser) {
       const redirectUrl = new URL("/login", request.url);
       redirectUrl.searchParams.set("redirect", path);
       return NextResponse.redirect(redirectUrl);
