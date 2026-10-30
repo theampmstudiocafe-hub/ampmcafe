@@ -31,6 +31,7 @@ export interface OrderRoutingInput {
   serviceChargePaise?: number;
   totalGrossPaise?: number;
   gstin?: string;
+  specialInstructions?: string;
 }
 
 // In-memory atomic sequence store for testing / offline
@@ -112,6 +113,7 @@ export async function routeOrderToStations(order: OrderRoutingInput): Promise<{
       station: typedStation,
       type: 'kot_ticket',
       createdAt: new Date().toISOString(),
+      specialInstructions: order.specialInstructions,
       items: items.map((i) => ({
         name: i.name,
         quantity: i.quantity,

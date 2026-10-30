@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/navigation";
-import { CheckCircle2, Clock, Utensils, Download, Send, AlertTriangle, ArrowRight, RefreshCw, ChefHat, CheckCheck } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Clock, Utensils, Download, Send, AlertTriangle, ArrowRight, RefreshCw, ChefHat, CheckCheck, PlusCircle } from "lucide-react";
 
 export default function OrderStatusPage() {
   const params = useParams();
@@ -201,6 +201,20 @@ export default function OrderStatusPage() {
             </p>
           )}
         </div>
+      </div>
+
+      {/* Reorder / Place Another Order Button */}
+      <div className="pt-2">
+        <Link
+          href={`/order/${order?.tableToken || "QR-PUNE-T01-A9F2"}`}
+          className="w-full py-3.5 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer"
+        >
+          <PlusCircle className="w-4 h-4 text-stone-950" />
+          <span>Place Another Order / Reorder</span>
+        </Link>
+        <p className="text-[11px] text-center text-stone-500 font-light mt-2">
+          Want another coffee or dessert? Tap above to browse and order more items for your table.
+        </p>
       </div>
     </div>
   );

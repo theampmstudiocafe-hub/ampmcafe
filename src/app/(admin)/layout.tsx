@@ -22,6 +22,8 @@ import {
   ChefHat,
   MessageSquareHeart,
   TrendingUp,
+  Activity,
+  Sliders,
 } from "lucide-react";
 import { OfflineSyncTray } from "@/components/admin/OfflineSyncTray";
 
@@ -53,12 +55,14 @@ export default function AdminLayout({
     {
       title: "Café Operations",
       items: [
+        { title: "Operations Console", href: "/admin/operations", icon: Activity },
         { title: "Counter POS", href: "/admin/pos", icon: Receipt },
         { title: "Kitchen Display (KDS)", href: "/admin/kds", icon: ChefHat },
         { title: "Dining Tables", href: "/admin/tables", icon: UtensilsCrossed },
         { title: "Suppliers & POs", href: "/admin/suppliers", icon: Truck },
         { title: "Stock & Stocktake", href: "/admin/inventory", icon: Boxes },
         { title: "Kitchen Recipes (BOM)", href: "/admin/recipes", icon: Boxes },
+        { title: "Café & Tax Settings", href: "/admin/settings", icon: Sliders },
       ],
     },
     {

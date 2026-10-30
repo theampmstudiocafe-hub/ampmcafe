@@ -42,13 +42,31 @@ export const DEFAULT_PRICING_SETTINGS: PricingSettings = {
   serviceChargeEnabled: false,
 };
 
+const globalSettingsKey = "__am_pm_pricing_settings";
+if (!(globalThis as any)[globalSettingsKey]) {
+  (globalThis as any)[globalSettingsKey] = { ...DEFAULT_PRICING_SETTINGS };
+}
+
+export function getDynamicPricingSettings(): PricingSettings {
+  return { ...(globalThis as any)[globalSettingsKey] };
+}
+
+export function updateDynamicPricingSettings(newSettings: Partial<PricingSettings>): PricingSettings {
+  const current = (globalThis as any)[globalSettingsKey] || { ...DEFAULT_PRICING_SETTINGS };
+  (globalThis as any)[globalSettingsKey] = {
+    ...current,
+    ...newSettings,
+  };
+  return { ...(globalThis as any)[globalSettingsKey] };
+}
+
 /**
  * Calculates itemized line totals, taxes, and grand totals in integer paise.
  * Documented Rounding Rule: Math.round() half-up to nearest integer paise.
  */
 export function calculateOrderBill(
   items: LineItemInput[],
-  settings: PricingSettings = DEFAULT_PRICING_SETTINGS
+  settings: PricingSettings = getDynamicPricingSettings()
 ): CalculatedBill {
   let subtotalPaise = 0;
 

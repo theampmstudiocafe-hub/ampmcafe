@@ -13,6 +13,7 @@ export async function POST(request: Request) {
       items,
       idempotencyKey,
       specialInstructions,
+      isReorder,
     } = body;
 
     if (!tableToken || !items || !Array.isArray(items) || items.length === 0) {
@@ -28,8 +29,8 @@ export async function POST(request: Request) {
     const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const orderNumber = `AMPM-20261026-${String(Math.floor(1000 + Math.random() * 9000))}`;
 
-    // 1. Atomic table hold reservation (4 min TTL)
-    const reserveResult = await reserveTableAtomic(tableToken, orderId, 4);
+    // 1. Atomic table hold reservation (4 min TTL, allows reordering if table is dining)
+    const reserveResult = await reserveTableAtomic(tableToken, orderId, 4, Boolean(isReorder));
     if (!reserveResult.success) {
       return NextResponse.json(
         {

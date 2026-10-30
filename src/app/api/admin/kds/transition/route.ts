@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { memoryKotsStore } from '@/lib/cafe/kot-router';
+import { memoryKotsStore, memoryPrintJobsStore } from '@/lib/cafe/kot-router';
 import { memoryOrdersMap } from '@/lib/cafe/order-store';
 import { deriveOrderStatus } from '@/lib/cafe/kot-state-derivation';
 import { reopenTable } from '@/lib/cafe/table-service';
 import { depleteStockForKot } from '@/lib/services/recipe-depletion-service';
+import { renderStructuredJobToAscii } from '@/lib/hardware/escpos';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,78 @@ export async function POST(request: Request) {
         kot.status = 'served';
         kot.completedAt = new Date().toISOString();
         break;
+
+      case 'handed_over_to_rider':
+        kot.status = 'served';
+        kot.riderHandedOverAt = new Date().toISOString();
+        if (order) {
+          order.riderHandedOverAt = kot.riderHandedOverAt;
+        }
+        break;
+
+      case 'undo':
+      case 'recall':
+        if (kot.status === 'served') {
+          kot.status = 'ready';
+        } else if (kot.status === 'ready') {
+          kot.status = 'preparing';
+        } else if (kot.status === 'preparing') {
+          kot.status = 'accepted';
+        }
+        kot.recalledAt = new Date().toISOString();
+        break;
+
+      case 'reprint_kot': {
+        kot.reprintCount = (kot.reprintCount || 0) + 1;
+        kot.reprintedAt = new Date().toISOString();
+        if (!kot.originalPrintedAt) {
+          kot.originalPrintedAt = kot.createdAt;
+        }
+
+        const printerTarget = kot.station === 'food'
+          ? 'printer_food'
+          : kot.station === 'beverage'
+          ? 'printer_bev'
+          : 'printer_dessert';
+
+        const reprintPayload = {
+          orderNumber: order?.orderNumber || kot.kotNumber,
+          tableNumber: order?.tableNumber || 'Table 1',
+          kotNumber: kot.kotNumber,
+          station: kot.station,
+          type: 'kot_ticket' as const,
+          createdAt: kot.createdAt,
+          reprintCount: kot.reprintCount,
+          originalPrintedAt: kot.originalPrintedAt,
+          reprintedAt: kot.reprintedAt,
+          specialInstructions: order?.specialInstructions,
+          items: (kot.items || []).map((it: any) => ({
+            name: it.name,
+            quantity: it.quantity,
+            specialInstructions: it.specialInstructions,
+            modifiers: it.modifiers?.map((m: any) => m.name || m),
+          })),
+        };
+
+        const width = 48;
+        const renderedText = renderStructuredJobToAscii(reprintPayload, width);
+
+        const reprintJob = {
+          id: `print_reprint_${Date.now()}`,
+          orderId: kot.orderId,
+          kotId: kot.id,
+          target: printerTarget,
+          status: 'queued' as const,
+          data: reprintPayload,
+          renderedText,
+          retryCount: 0,
+          createdAt: new Date().toISOString(),
+        };
+
+        memoryPrintJobsStore.push(reprintJob as any);
+        kot.lastReprintJobId = reprintJob.id;
+        break;
+      }
 
       case 'reject': {
         kot.status = 'rejected';

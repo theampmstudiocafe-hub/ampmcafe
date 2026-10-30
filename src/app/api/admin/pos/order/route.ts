@@ -27,6 +27,12 @@ export async function POST(request: Request) {
       invoicingMode = 'per_terminal_series', // 'per_terminal_series' | 'provisional_slip' - Pending CA
       clientMutationId,
       notes,
+      cashReceivedApproved = true,
+      cashReceivedPaise,
+      cashApprovedBy,
+      customerName,
+      customerGstin,
+      specialInstructions,
     } = body;
 
     // Strict Studio / Cafe Separation: Reject any attempt to charge member yoga credits
@@ -94,15 +100,29 @@ export async function POST(request: Request) {
     const orderId = clientMutationId || `pos_ord_${Date.now()}`;
     const orderNumber = `POS-${terminalId}-${Date.now().toString().slice(-4)}`;
 
+    const isCash = tenderMode === 'cash';
+    const isApproved = !isCash || Boolean(cashReceivedApproved);
+    const initialStatus = isApproved ? 'paid' : 'cash_verification_pending';
+    const cashPaise = cashReceivedPaise || (isCash ? totalGrossPaise : 0);
+    const changeDuePaise = isCash ? Math.max(0, cashPaise - totalGrossPaise) : 0;
+
     const orderRecord: any = {
       id: orderId,
       orderNumber,
       orderType,
       tableNumber: orderType === 'dine_in' ? tableNumber : `Counter (${orderType})`,
       tableToken: tableToken || null,
-      status: 'paid', // Counter orders are immediately tender-settled
+      status: initialStatus,
       source: 'counter_pos',
       tenderMode,
+      cashReceivedApproved: isApproved,
+      cashApprovedBy: isApproved ? (cashApprovedBy || staffName) : null,
+      cashApprovedAt: isApproved ? new Date().toISOString() : null,
+      cashReceivedPaise: isCash ? cashPaise : null,
+      changeDuePaise: isCash ? changeDuePaise : null,
+      customerName: customerName || null,
+      customerGstin: customerGstin || null,
+      specialInstructions: specialInstructions || notes || null,
       upiUtrReference: upiUtrReference || null,
       subtotalPaise: finalSubtotalPaise,
       discountPercent: discount,
@@ -123,30 +143,42 @@ export async function POST(request: Request) {
       await lockTableOrderInProgress(tableToken, orderId);
     }
 
-    // Route items to KOT pipeline
-    const routingResult = await routeOrderToStations({
-      orderId,
-      orderNumber,
-      tableNumber: orderRecord.tableNumber,
-      items: orderRecord.items,
-      subtotalPaise: finalSubtotalPaise,
-      cgstPaise,
-      sgstPaise,
-      totalGrossPaise,
-      gstin: '27AAAAA0000A1Z5',
-    });
+    let routingResult: any = { kots: [], printJobIds: [] };
 
-    orderRecord.kots = routingResult.kots;
-    orderRecord.printJobIds = routingResult.printJobIds;
+    // Route items to KOT pipeline if approved
+    if (isApproved) {
+      routingResult = await routeOrderToStations({
+        orderId,
+        orderNumber,
+        tableNumber: orderRecord.tableNumber,
+        items: orderRecord.items,
+        subtotalPaise: finalSubtotalPaise,
+        cgstPaise,
+        sgstPaise,
+        totalGrossPaise,
+        gstin: '27AAAAA0000A1Z5',
+        specialInstructions: orderRecord.specialInstructions,
+      });
+
+      orderRecord.kots = routingResult.kots;
+      orderRecord.printJobIds = routingResult.printJobIds;
+    }
 
     return NextResponse.json({
       success: true,
+      kickCashDrawer: isCash && isApproved,
       order: {
         id: orderId,
         orderNumber,
         invoiceNumber,
         tableNumber: orderRecord.tableNumber,
+        status: orderRecord.status,
         tenderMode,
+        cashReceivedApproved: orderRecord.cashReceivedApproved,
+        cashReceivedPaise: orderRecord.cashReceivedPaise,
+        changeDuePaise: orderRecord.changeDuePaise,
+        customerName: orderRecord.customerName,
+        customerGstin: orderRecord.customerGstin,
         subtotalPaise: finalSubtotalPaise,
         cgstPaise,
         sgstPaise,

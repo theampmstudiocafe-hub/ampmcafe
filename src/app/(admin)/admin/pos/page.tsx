@@ -19,6 +19,10 @@ import {
   ShoppingBag,
   Percent,
   Lock,
+  Coins,
+  FileText,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { renderStructuredJobToAscii, StructuredPrintJobData } from "@/lib/hardware/escpos";
 
@@ -49,6 +53,30 @@ export default function CounterPosPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<any>(null);
   const [receiptAscii, setReceiptAscii] = useState<string | null>(null);
+
+  // Cash Tender, Approval, Cooking Notes & B2B Invoicing
+  const [cashTenderedInr, setCashTenderedInr] = useState<string>("");
+  const [cashApprovalConfirmed, setCashApprovalConfirmed] = useState<boolean>(true);
+  const [orderCookingInstructions, setOrderCookingInstructions] = useState<string>("");
+  const [customerName, setCustomerName] = useState<string>("");
+  const [customerGstin, setCustomerGstin] = useState<string>("");
+  const [showB2bFields, setShowB2bFields] = useState<boolean>(false);
+  const [kickingDrawer, setKickingDrawer] = useState<boolean>(false);
+
+  const handleKickDrawer = async () => {
+    setKickingDrawer(true);
+    try {
+      await fetch("/api/hardware/test-print", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target: "printer_pos", action: "kick_drawer" }),
+      });
+    } catch (err) {
+      console.error("Failed to kick drawer", err);
+    } finally {
+      setTimeout(() => setKickingDrawer(false), 1000);
+    }
+  };
 
   // Seed Menu Catalog
   const catalog = [
@@ -204,12 +232,20 @@ export default function CounterPosPage() {
           discountPercent,
           discountReason,
           invoicingMode,
+          cashReceivedApproved: tenderMode === "cash" ? cashApprovalConfirmed : true,
+          cashReceivedPaise: cashTenderedInr ? Math.round(parseFloat(cashTenderedInr) * 100) : totalGrossPaise,
+          specialInstructions: orderCookingInstructions || null,
+          customerName: customerName || null,
+          customerGstin: customerGstin || null,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
         setCompletedOrder(data.order);
+
+        const cashPaise = cashTenderedInr ? Math.round(parseFloat(cashTenderedInr) * 100) : totalGrossPaise;
+        const changeDuePaise = tenderMode === "cash" ? Math.max(0, cashPaise - totalGrossPaise) : 0;
 
         // Generate ASCII-safe 2-inch (58mm) receipt
         const receiptData: StructuredPrintJobData = {
@@ -218,6 +254,11 @@ export default function CounterPosPage() {
           tableNumber: data.order.tableNumber,
           type: "customer_receipt",
           createdAt: new Date().toISOString(),
+          customerName: customerName || undefined,
+          customerGstin: customerGstin || undefined,
+          cashTenderedPaise: tenderMode === "cash" ? cashPaise : undefined,
+          changeDuePaise: tenderMode === "cash" ? changeDuePaise : undefined,
+          specialInstructions: orderCookingInstructions || undefined,
           items: cart.map((c) => ({
             name: c.name,
             quantity: c.quantity,
@@ -233,6 +274,10 @@ export default function CounterPosPage() {
         const ascii = renderStructuredJobToAscii(receiptData, 32);
         setReceiptAscii(ascii);
         clearCart();
+        setCashTenderedInr("");
+        setOrderCookingInstructions("");
+        setCustomerName("");
+        setCustomerGstin("");
       } else {
         alert(data.error || "Billing failed");
       }
@@ -283,8 +328,18 @@ export default function CounterPosPage() {
             </span>
           </div>
 
-          {/* Role & Invoicing Mode Selector */}
+          {/* Role & Invoicing Mode Selector & Cash Drawer Kick */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleKickDrawer}
+              disabled={kickingDrawer}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+              title="Pulse Pin 2 to pop open physical cash drawer"
+            >
+              <Coins className={`w-3.5 h-3.5 text-amber-600 ${kickingDrawer ? "animate-bounce" : ""}`} />
+              <span className="hidden sm:inline">Kick Drawer</span>
+            </button>
+
             <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl text-xs">
               <span className="text-[10px] text-stone-500 font-semibold uppercase px-1">Role:</span>
               {(["front_desk", "manager", "owner"] as const).map((r) => (
@@ -581,6 +636,71 @@ export default function CounterPosPage() {
                 <span>UPI QR</span>
               </button>
             </div>
+
+            {/* Cash Tender Details & Reception Approval */}
+            {tenderMode === "cash" && (
+              <div className="p-3 bg-white rounded-xl border border-stone-200 space-y-2.5 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between text-xs font-semibold text-stone-700">
+                  <span>Cash Handed Over:</span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCashTenderedInr((totalGrossPaise / 100).toFixed(0))}
+                      className="px-2 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-[10px] text-stone-700"
+                    >
+                      Exact
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCashTenderedInr("500")}
+                      className="px-2 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-[10px] text-stone-700"
+                    >
+                      ₹500
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCashTenderedInr("1000")}
+                      className="px-2 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-[10px] text-stone-700"
+                    >
+                      ₹1000
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-2.5 top-1.5 text-stone-400 text-xs">₹</span>
+                    <input
+                      type="number"
+                      step="1"
+                      value={cashTenderedInr}
+                      onChange={(e) => setCashTenderedInr(e.target.value)}
+                      placeholder={(totalGrossPaise / 100).toFixed(0)}
+                      className="w-full pl-6 pr-2 py-1.5 rounded-lg border border-stone-300 text-xs font-mono bg-white focus:outline-none"
+                    />
+                  </div>
+                  {cashTenderedInr && parseFloat(cashTenderedInr) * 100 >= totalGrossPaise && (
+                    <div className="text-[11px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-200">
+                      Change: ₹{((parseFloat(cashTenderedInr) * 100 - totalGrossPaise) / 100).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Reception / Admin Approval Check */}
+                <label className="flex items-start gap-2 pt-1 border-t border-stone-100 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cashApprovalConfirmed}
+                    onChange={(e) => setCashApprovalConfirmed(e.target.checked)}
+                    className="mt-0.5 rounded text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-[11px] text-stone-600">
+                    <strong className="text-stone-800">Reception/Cashier Approval:</strong> Confirm physical cash received & verified. (Pops cash drawer upon checkout)
+                  </span>
+                </label>
+              </div>
+            )}
+
             {tenderMode === "counter_upi_qr" && (
               <input
                 type="text"
@@ -589,6 +709,51 @@ export default function CounterPosPage() {
                 placeholder="UPI UTR / Ref (Optional)"
                 className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 text-xs bg-white"
               />
+            )}
+          </div>
+
+          {/* Special Cooking & Delivery Instructions */}
+          <div className="space-y-1">
+            <input
+              type="text"
+              value={orderCookingInstructions}
+              onChange={(e) => setOrderCookingInstructions(e.target.value)}
+              placeholder="Special cooking notes (e.g. extra hot oat milk, allergen)..."
+              className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 text-xs bg-white placeholder-stone-400 focus:outline-none"
+            />
+          </div>
+
+          {/* Collapsible B2B Tax Invoicing */}
+          <div className="border border-stone-200 rounded-xl bg-white p-2.5 space-y-2">
+            <button
+              type="button"
+              onClick={() => setShowB2bFields(!showB2bFields)}
+              className="w-full flex items-center justify-between text-[11px] font-semibold text-stone-700"
+            >
+              <span className="flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-amber-600" />
+                <span>B2B Tax Invoicing Details (Optional)</span>
+              </span>
+              {showB2bFields ? <ChevronUp className="w-3.5 h-3.5 text-stone-400" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-400" />}
+            </button>
+
+            {showB2bFields && (
+              <div className="space-y-1.5 pt-1 border-t border-stone-100 animate-in fade-in duration-150">
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Company / Client Legal Name"
+                  className="w-full px-2.5 py-1 rounded-lg border border-stone-300 text-xs bg-white"
+                />
+                <input
+                  type="text"
+                  value={customerGstin}
+                  onChange={(e) => setCustomerGstin(e.target.value)}
+                  placeholder="Client GSTIN (e.g. 27AAAAA0000A1Z5)"
+                  className="w-full px-2.5 py-1 rounded-lg border border-stone-300 text-xs font-mono uppercase bg-white"
+                />
+              </div>
             )}
           </div>
 

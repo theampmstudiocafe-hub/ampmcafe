@@ -4,11 +4,11 @@
  * Pay -> Webhook -> KDS Display -> Printed KOT -> Accept -> Served
  */
 
-import { getTableByToken, reserveTableAtomic, extendTableHeartbeat, handleLatePaymentDecision, reopenTable, getAllTables, manualClearTable, reconcileCafeTables } from '../src/lib/cafe/table-service.ts';
-import { calculateOrderBill } from '../src/lib/cafe/pricing-tax-engine.ts';
+import { getTableByToken, reserveTableAtomic, extendTableHeartbeat, handleLatePaymentDecision, reopenTable, getAllTables, manualClearTable, reconcileCafeTables, lockTableOrderInProgress } from '../src/lib/cafe/table-service.ts';
+import { calculateOrderBill, getDynamicPricingSettings, updateDynamicPricingSettings, DEFAULT_PRICING_SETTINGS } from '../src/lib/cafe/pricing-tax-engine.ts';
 import { routeOrderToStations, memoryKotsStore, memoryPrintJobsStore } from '../src/lib/cafe/kot-router.ts';
 import { deriveOrderStatus } from '../src/lib/cafe/kot-state-derivation.ts';
-import { renderStructuredJobToAscii } from '../src/lib/hardware/escpos.ts';
+import { renderStructuredJobToAscii, ESC_POS_COMMANDS } from '../src/lib/hardware/escpos.ts';
 
 class VerticalSliceTestRunner {
   constructor() {
@@ -261,6 +261,65 @@ class VerticalSliceTestRunner {
     const posAscii = renderStructuredJobToAscii(posReceiptData, 32);
     this.assert("2-Inch 58mm POS receipt contains terminal invoice number", posAscii.includes(posTerminalInvoice));
     this.assert("2-Inch 58mm POS receipt contains CGST, SGST, and ASCII currency", posAscii.includes("CGST") && posAscii.includes("Rs."));
+
+    // 16. Dynamic Pricing Settings & Editable Service Charge
+    console.log("\nTEST 16: Dynamic Pricing & Tax Settings Engine");
+    updateDynamicPricingSettings({ serviceChargeEnabled: true, serviceChargePercent: 10.0, foodGstPercent: 5.0 });
+    const billWithServiceCharge = calculateOrderBill([
+      { menuItemId: "test_bowl", name: "AM:PM Earth Bowl", quantity: 1, unitPricePaise: 38000, station: "food" },
+    ]);
+    this.assert("Service charge 10% is computed as 3,800 paise", billWithServiceCharge.serviceChargePaise === 3800);
+    this.assert("Taxable base includes service charge (38,000 + 3,800 = 41,800 paise)", billWithServiceCharge.taxableBasePaise === 41800);
+    this.assert("CGST 2.5% computed on taxable base (1,045 paise)", billWithServiceCharge.cgstPaise === 1045);
+    updateDynamicPricingSettings({ ...DEFAULT_PRICING_SETTINGS });
+
+    // 17. Special Cooking Instructions Propagation to KOT & ESC/POS
+    console.log("\nTEST 17: Special Cooking Instructions on KOT & ESC/POS");
+    const specialKotData = {
+      orderNumber: "ORD-SPL-001",
+      tableNumber: "Table 1",
+      kotNumber: "KOT-20261026-F-0099",
+      station: "food",
+      type: "kot_ticket",
+      createdAt: new Date().toISOString(),
+      specialInstructions: "Severe peanut allergy, clean prep area",
+      items: [
+        { name: "AM:PM Earth Bowl", quantity: 1, specialInstructions: "No onion, extra dressing" },
+      ],
+    };
+    const specialKotAscii = renderStructuredJobToAscii(specialKotData, 48);
+    this.assert("KOT ticket includes order special instructions banner", specialKotAscii.includes("ORDER NOTE: SEVERE PEANUT ALLERGY"));
+    this.assert("KOT ticket includes item special note", specialKotAscii.includes("NOTE: NO ONION, EXTRA DRESSING"));
+
+    // 18. KOT Reprint with Timing & Duplicate Counter
+    console.log("\nTEST 18: KOT Reprint with Timing & Duplicate Counter");
+    const reprintKotData = {
+      ...specialKotData,
+      reprintCount: 2,
+      originalPrintedAt: "2026-10-30T14:00:00.000Z",
+      reprintedAt: "2026-10-30T14:15:22.000Z",
+    };
+    const reprintKotAscii = renderStructuredJobToAscii(reprintKotData, 48);
+    this.assert("KOT reprint contains duplicate header with count", reprintKotAscii.includes("*** REPRINT #2 (DUPLICATE) ***"));
+    this.assert("KOT reprint contains Original and Reprinted timestamps", reprintKotAscii.includes("Original:") && reprintKotAscii.includes("Reprinted:"));
+
+    // 19. Hardware ESC/POS Commands (Cash Drawer Kick & Buzzer)
+    console.log("\nTEST 19: Hardware ESC/POS Binary Commands");
+    this.assert("ESC/POS Cash drawer kick sequence is ESC p 0 25 250", ESC_POS_COMMANDS.KICK_DRAWER === "\x1b\x70\x00\x19\xfa");
+    this.assert("ESC/POS Kitchen buzzer sequence is ESC B 2 2", ESC_POS_COMMANDS.BUZZER_BEEP === "\x1b\x42\x02\x02");
+
+    // 20. Table Reorder on Occupied Table
+    console.log("\nTEST 20: Table Reordering Flow on Active Table");
+    const table1Token = "QR-PUNE-T01-A9F2";
+    // Lock table into order_in_progress
+    await lockTableOrderInProgress(table1Token, "prior_active_ord");
+    const tableBeforeReorder = await getTableByToken(table1Token);
+    this.assert("Table is in order_in_progress prior to reorder", tableBeforeReorder?.status === "order_in_progress");
+
+    const reorderResult = await reserveTableAtomic(table1Token, "reorder_ord_001", 4, true);
+    this.assert("Reorder succeeds on occupied table when allowReorder is true", reorderResult.success);
+    this.assert("Table remains active for reorder", reorderResult.table?.status === "order_in_progress");
+    await reopenTable(table1Token);
 
     console.log("\n=======================================================");
     console.log(`VERTICAL SLICE SUMMARY: ${this.passed} Passed | ${this.failed} Failed`);

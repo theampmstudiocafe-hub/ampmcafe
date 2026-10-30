@@ -126,21 +126,30 @@ export async function getTableByToken(token: string) {
 /**
  * Atomically reserves table (available -> pending_payment) with hold TTL (default 4 min).
  */
-export async function reserveTableAtomic(token: string, orderId: string, ttlMinutes = 4): Promise<{ success: boolean; table?: any; error?: string }> {
+export async function reserveTableAtomic(
+  token: string,
+  orderId: string,
+  ttlMinutes = 4,
+  allowReorder = false
+): Promise<{ success: boolean; table?: any; error?: string }> {
   const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
 
   try {
     const supabase = getSupabase();
-    // Atomic update where status is available OR hold expired
+    // Atomic update where status is available OR hold expired OR reorder on active table
+    const orClause = allowReorder
+      ? `status.eq.available,status.eq.order_in_progress,and(status.eq.pending_payment,hold_expires_at.lt.${new Date().toISOString()})`
+      : `status.eq.available,and(status.eq.pending_payment,hold_expires_at.lt.${new Date().toISOString()})`;
+
     const { data, error } = await supabase
       .from('dining_tables')
       .update({
-        status: 'pending_payment',
+        status: allowReorder ? 'order_in_progress' : 'pending_payment',
         active_order_id: orderId,
         hold_expires_at: expiresAt,
       })
       .eq('qr_code_token', token)
-      .or(`status.eq.available,and(status.eq.pending_payment,hold_expires_at.lt.${new Date().toISOString()})`)
+      .or(orClause)
       .select()
       .maybeSingle();
 
@@ -153,6 +162,11 @@ export async function reserveTableAtomic(token: string, orderId: string, ttlMinu
 
   const mem = memoryTables.get(token);
   if (!mem) return { success: false, error: 'Table not found' };
+
+  if (allowReorder && mem.status === 'order_in_progress') {
+    mem.active_order_id = orderId;
+    return { success: true, table: { ...mem } };
+  }
 
   const isExpired = mem.status === 'pending_payment' && mem.hold_expires_at && new Date(mem.hold_expires_at) < new Date();
   if (mem.status === 'available' || isExpired) {

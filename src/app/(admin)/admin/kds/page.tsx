@@ -14,6 +14,9 @@ import {
   VolumeX,
   Play,
   CheckCheck,
+  RotateCcw,
+  Truck,
+  FileText,
 } from "lucide-react";
 
 export default function KitchenDisplaySystemPage() {
@@ -298,17 +301,24 @@ export default function KitchenDisplaySystemPage() {
 
                 {/* Items List */}
                 <div className="p-4 flex-1 space-y-3">
+                  {kot.reprintCount && kot.reprintCount > 0 && (
+                    <div className="p-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-[10px] text-amber-300 font-mono text-center">
+                      *** REPRINT #{kot.reprintCount} (DUPLICATE) ***
+                    </div>
+                  )}
+
                   {(kot.items || []).map((item: any, idx: number) => (
-                    <div key={idx} className="space-y-1">
+                    <div key={idx} className="space-y-1.5">
                       <div className="flex items-start justify-between text-sm font-medium text-white">
                         <span>
-                          <strong className="text-amber-400">{item.quantity}x</strong> {item.name}
+                          <strong className="text-amber-400 font-bold">{item.quantity}x</strong> {item.name}
                         </span>
                       </div>
                       {item.specialInstructions && (
-                        <p className="text-[11px] text-amber-300 font-mono bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
-                          Note: {item.specialInstructions}
-                        </p>
+                        <div className="p-2 rounded-lg bg-amber-400 text-stone-950 font-mono text-[11px] font-bold border border-amber-300 shadow-sm flex items-start gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-stone-950 shrink-0 mt-0.5" />
+                          <span>NOTE: {item.specialInstructions.toUpperCase()}</span>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -316,15 +326,27 @@ export default function KitchenDisplaySystemPage() {
 
                 {/* Action Footer */}
                 <div className="p-3 border-t border-stone-800 bg-stone-950/40 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
                     <button
-                      onClick={() => handlePrintTicket(kot)}
-                      className="px-2.5 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs flex items-center gap-1 transition"
-                      title="Print 58mm Ticket"
+                      onClick={() => handleTransition(kot.id, "reprint_kot")}
+                      className="px-2 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-400 text-xs flex items-center gap-1 transition"
+                      title="Reprint KOT with timing stamp"
                     >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Print</span>
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{kot.reprintCount ? `Reprint (${kot.reprintCount})` : "Reprint"}</span>
                     </button>
+
+                    {(isPreparing || isReady) && (
+                      <button
+                        onClick={() => handleTransition(kot.id, "undo")}
+                        disabled={actionInProgress === kot.id}
+                        className="px-2 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs flex items-center gap-1 transition"
+                        title="Recall / Undo state"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-stone-400" />
+                        <span>Undo</span>
+                      </button>
+                    )}
 
                     {isPending && (
                       <div className="flex gap-1.5 flex-1 justify-end">
@@ -368,14 +390,25 @@ export default function KitchenDisplaySystemPage() {
                     )}
 
                     {isReady && (
-                      <button
-                        onClick={() => handleTransition(kot.id, "serve")}
-                        disabled={actionInProgress === kot.id}
-                        className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"
-                      >
-                        <CheckCheck className="w-3.5 h-3.5" />
-                        <span>Mark Served (Reopen Table)</span>
-                      </button>
+                      <div className="flex gap-1.5 flex-1">
+                        <button
+                          onClick={() => handleTransition(kot.id, "handed_over_to_rider")}
+                          disabled={actionInProgress === kot.id}
+                          className="py-2 px-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition flex items-center justify-center gap-1"
+                          title="Mark handed over to delivery rider"
+                        >
+                          <Truck className="w-3.5 h-3.5" />
+                          <span>Rider Pickup</span>
+                        </button>
+                        <button
+                          onClick={() => handleTransition(kot.id, "serve")}
+                          disabled={actionInProgress === kot.id}
+                          className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"
+                        >
+                          <CheckCheck className="w-3.5 h-3.5" />
+                          <span>Mark Served</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
